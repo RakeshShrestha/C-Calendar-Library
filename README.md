@@ -10,4 +10,4 @@ Run ```build.bat```
 ## Build from command line, using clang with MSVC frontend
 Run ```build-with-clang-via-msvc-frontend.bat```
 
-I personally consider even installation ony of window 10 sdk is huge
+I personally consider even installation only of window 10 sdk is huge
