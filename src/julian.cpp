@@ -1,3 +1,4 @@
+/**
 # Copyright Rakesh Shrestha (rakesh.shrestha@gmail.com)
 # All rights reserved.
 #
@@ -6,11 +7,13 @@
 # met:
 #
 # Redistributions must retain the above copyright notice.
+*/
 
 #include <cmath>
 #include "calendar.h"
 #include "gregorian.h"
 #include "julian.h"
+
 using namespace std;
 
 namespace calendar {
