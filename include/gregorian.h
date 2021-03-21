@@ -9,40 +9,89 @@
 # Redistributions must retain the above copyright notice.
 */
 
-#ifndef GREGORIAN_H_
-#define GREGORIAN_H_
+#pragma once
 
-#include "simple.h"
+#include "StandardDate.h"
+#include <string>
+#include <vector>
+#include <any>
+#include <optional>
 
-namespace calendar {
-  class Gregorian : public Simple
-  {
-  public:
-    Gregorian () : Simple (RD) { }
-    Gregorian (double year, double month, 
-               double day) : Simple (RD, year, month, day) { }   
-    Gregorian (double year, util::CommonMonth month, 
-               double day) : Simple (RD, year, 
-                                     static_cast<double> (month), 
-                                     day) { }
+namespace calendar { class Date; }
 
-    virtual double to_fixed_date () const;
-    virtual Calendar* create_from_fixed (double date);
-    virtual Calendar* update_from_fixed (double date, Calendar* c);
-    virtual void destroy (Calendar* c);
-    virtual double nth_kday (double n, double k) const;
-    virtual bool is_leap_year () const;
-    double new_year () const;
-    double year_end () const;
-    util::DoubleRange year_range () const;
-    double year_from_fixed (double date) const;
-    double difference (const Gregorian& g) const;
-    double day_light_saving_start () const;
-    double day_light_saving_end () const;
+namespace calendar
+{
 
-  private:
-    static const int RD;    
-  };  
+	class Gregorian : public StandardDate
+	{
+	public:
+		static constexpr long long EPOCH = 1LL;
+		static const std::vector<std::wstring> dayOfWeekNames;
+		static const std::vector<std::wstring> monthNames;
+
+		private:
+			class StaticConstructor
+			{
+			public:
+				StaticConstructor();
+			};
+
+		private:
+			static Gregorian::StaticConstructor staticConstructor;
+
+
+	public:
+		Gregorian();
+
+		Gregorian(long long const date);
+
+		Gregorian(Date const date);
+
+		Gregorian(long long const year, int const month, int const day);
+
+		static long long toFixed(long long const year, int const month, int const day);
+
+		long long toFixed() override;
+
+		void fromFixed(long long const date) override;
+
+		static long long altFixedFromGregorian(long long const year, int const month, int const day);
+
+		virtual void altGregorianFromFixed(long long const date);
+
+		static bool isLeapYear(long long const gYear);
+
+		static long long yearFromFixed(long long const date);
+
+		static long long altGregorianYearFromFixed(long long const date);
+
+		virtual int lastDayOfMonth();
+
+		virtual long long dayNumber();
+
+		virtual long long daysRemaining();
+
+		static long long independenceDay(long long const gYear);
+
+		static long long laborDay(long long const gYear);
+
+		static long long memorialDay(long long const gYear);
+
+		static long long electionDay(long long const gYear);
+
+		static long long daylightSavingStart(long long const gYear);
+
+		static long long daylightSavingEnd(long long const gYear);
+
+		static long long christmas(long long const gYear);
+
+		static long long advent(long long const gYear);
+
+		static long long epiphany(long long const gYear);
+
+		std::wstring format() override;
+
+		virtual bool equals(std::any const obj);
+	};
+
 }
-
-#endif // GREGORIAN_H_

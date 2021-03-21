@@ -13,19 +13,25 @@
 
 #include "StandardDate.h"
 #include <string>
+#include <vector>
+#include <cmath>
 #include <any>
 #include <optional>
 
 namespace calendar { class Date; }
-namespace calendar { class FixedVector; }
 
 namespace calendar
 {
 
-	class Julian : public StandardDate
+	class OldHinduSolar : public StandardDate
 	{
 	public:
 		static const long long EPOCH = 0;
+		static constexpr double ARYA_SOLAR_YEAR = 365.25868055555554;
+		static constexpr double ARYA_SOLAR_MONTH = 30.43822337962963;
+		static constexpr double ARYA_JOVIAN_PERIOD = 4332.27217316816;
+		static const std::vector<std::wstring> dayOfWeekNames;
+		static const std::vector<std::wstring> monthNames;
 
 		private:
 			class StaticConstructor
@@ -35,17 +41,17 @@ namespace calendar
 			};
 
 		private:
-			static Julian::StaticConstructor staticConstructor;
+			static OldHinduSolar::StaticConstructor staticConstructor;
 
 
 	public:
-		Julian();
+		OldHinduSolar();
 
-		Julian(long long const date);
+		OldHinduSolar(long long const date);
 
-		Julian(Date const date);
+		OldHinduSolar(Date const date);
 
-		Julian(long long const year, int const month, int const day);
+		OldHinduSolar(long long const year, int const month, int const day);
 
 		static long long toFixed(long long const year, int const month, int const day);
 
@@ -53,15 +59,11 @@ namespace calendar
 
 		void fromFixed(long long const date) override;
 
-		static long long BCE(long long const n);
+		static long long dayCount(long long const date);
 
-		static long long CE(long long const n);
+		static double dayCount(double const date);
 
-		static bool isLeapYear(long long const jYear);
-
-		static FixedVector *inGregorian(int const jMonth, int const jDay, long long const gYear);
-
-		static FixedVector *easternOrthodoxChristmas(long long const gYear);
+		static int jovianYear(long long const date);
 
 		std::wstring format() override;
 

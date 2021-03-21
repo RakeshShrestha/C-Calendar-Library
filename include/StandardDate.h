@@ -15,43 +15,35 @@
 #include <string>
 #include <vector>
 #include <any>
-#include <optional>
 
 namespace calendar { class Date; }
 
 namespace calendar
 {
 
-	class ISO : public Date
+	class StandardDate : public Date
 	{
 	public:
 		long long year = 0;
-		int week = 0;
+		int month = 0;
 		int day = 0;
 
-		ISO();
+		StandardDate();
 
-		ISO(long long const date);
+		StandardDate(long long const date);
 
-		ISO(Date const date);
+		StandardDate(Date const date);
 
-		ISO(long long const year, int const week, int const day);
+		StandardDate(long long const year, int const month, int const day);
 
-		static long long toFixed(long long const year, int const week, int const day);
-
-		long long toFixed() override;
-
-		void fromFixed(long long const date) override;
+		StandardDate(std::vector<int> &a);
 
 		void fromArray(std::vector<int> &a) override;
 
 	protected:
 		std::wstring toStringFields() override;
 
-	public:
-		std::wstring format() override;
-
-		virtual bool equals(std::any const obj);
+		virtual bool internalEquals(std::any const obj);
 	};
 
 }

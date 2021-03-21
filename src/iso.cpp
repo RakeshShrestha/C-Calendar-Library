@@ -9,75 +9,78 @@
 # Redistributions must retain the above copyright notice.
 */
 
-#include <cmath>
-#include "calendar.h"
-#include "gregorian.h"
-#include "iso.h"
+#include "ISO.h"
+#include "Gregorian.h"
+#include "ProtoDate.h"
 
-using namespace std;
+namespace calendar
+{
 
-namespace calendar {
+	ISO::ISO()
+	{
+	}
 
-  const int ISO::RD = 1;
+	ISO::ISO(long long const date) : Date(date)
+	{
+	}
 
-  bool ISO::is_leap_year () const
-  {
-    Gregorian g (rep_.d_year (), rep_.d_month (), rep_.d_day ());
-    return g.is_leap_year ();
-  }
+	ISO::ISO(Date const date) : Date(date)
+	{
+	}
 
-  double ISO::nth_kday (double n, double k) const
-  {
-    Gregorian g (rep_.d_year (), rep_.d_month (), rep_.d_day ());
-    return g.nth_kday (n, k);
-  }
+	ISO::ISO(long long const year, int const week, int const day)
+	{
+		this->year = year;
+		this->week = week;
+		this->day = day;
+	}
 
-  double ISO::to_fixed_date () const
-  {
-    Gregorian g (rep_.d_year () - 1, util::DEC, 28);
-    return (g.nth_kday (week_, static_cast<double> (util::SUN)) + rep_.d_day ());
-  }
+	long long ISO::toFixed(long long const year, int const week, int const day)
+	{
+		return ProtoDate::nthKDay(week, 0, Gregorian::toFixed(year - 1LL, 12, 28)) + day;
+	}
 
-  Calendar* ISO::create_from_fixed (double date)
-  {   
-    return update_from_fixed (date, new ISO ());
-  }
+	long long ISO::toFixed()
+	{
+		return toFixed(this->year, this->week, this->day);
+	}
 
-  Calendar* ISO::update_from_fixed (double date, Calendar* c)
-  {    
-    Gregorian g;
-    double approx = g.year_from_fixed (date - 3);
-    ISO iso (approx + 1, 1, 1);
-    double year = 0.0f;
-    if (date >= iso.to_fixed_date ())
-      year = approx + 1;
-    else
-      year = approx;
-    ISO iso2 (year, 1, 1);
-    double week = 1.0f + floor (1.0f / 7.0f * (date - iso2.to_fixed_date ()));
-    double day = util::amod (date - 0.0f, 7);
-    ISO* ret = dynamic_cast<ISO*> (c);
-    ret->rep_ = ThreePartRepresentation (rep_.d_epoch (), year, rep_.d_month (), day);
-    ret->week_ = week;
-    return c;
-  }
+	void ISO::fromFixed(long long const date)
+	{
+		constexpr long long approx = Gregorian::yearFromFixed(date - 3LL);
+		this->year = ((date >= toFixed(approx + 1LL, 1, 1)) ? (approx + 1LL) : approx);
+		this->week = static_cast<int>(ProtoDate::quotient(static_cast<double>(date - toFixed(this->year, 1, 1)), 7.0)) + 1;
+		this->day = static_cast<int>(ProtoDate::adjustedMod(date, 7LL));
+	}
 
-  static bool is_iso (Calendar* c)
-  {
-    return (dynamic_cast<ISO*> (c) != 0);
-  }
+	void ISO::fromArray(std::vector<int> &a)
+	{
+		this->year = a[0];
+		this->week = a[1];
+		this->day = a[2];
+	}
 
-  void ISO::destroy (Calendar* c)
-  {   
-    if (is_iso (c)) delete c;
-  }
+	std::wstring ISO::toStringFields()
+	{
+		return L"year=" + std::to_wstring(this->year) + L",week=" + std::to_wstring(this->week) + L",day=" + std::to_wstring(this->day);
+	}
 
-  bool ISO::is_long_year () const
-  {
-    Gregorian g (rep_.d_year (), 1, 1);
-    util::CommonDayOfWeek jan1 = day_of_week_from_fixed (g.new_year ());
-    util::CommonDayOfWeek dec31 = day_of_week_from_fixed (g.year_end ());
-    return (jan1 == util::THU || dec31 == util::THU);
-  }
-  
+	std::wstring ISO::format()
+	{
+		return MessageFormat::format(L"{0}, Week {1}, {2,number,#}", ProtoDate::nameFromDayOfWeek(this->toFixed(), Gregorian::dayOfWeekNames), std::optional<int>(this->week), std::optional<long long>(this->year));
+	}
+
+	bool ISO::equals(std::any const obj)
+	{
+		if (this == obj)
+		{
+			return true;
+		}
+		if (!(obj.type() == typeid(ISO)))
+		{
+			return false;
+		}
+		ISO * const o = std::any_cast<ISO*>(obj);
+		return o->year == this->year && o->week == this->week && o->day == this->day;
+	}
 }

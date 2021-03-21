@@ -9,113 +9,107 @@
 # Redistributions must retain the above copyright notice.
 */
 
-#include <cmath>
-#include "calendar.h"
-#include "gregorian.h"
-#include "julian.h"
+#include "Julian.h"
+#include "Gregorian.h"
+#include "Date.h"
+#include "ProtoDate.h"
+#include "FixedVector.h"
 
-using namespace std;
+namespace calendar
+{
 
-namespace calendar {
+	Julian::StaticConstructor::StaticConstructor()
+	{
+		EPOCH = Gregorian::toFixed(0LL, 12, 30);
+	}
 
-  static int julian_epoch () 
-  {
-    Gregorian g (0, util::DEC, 30);
-    return g.to_fixed_date ();
-  }
+	Julian::StaticConstructor Julian::staticConstructor;
 
-  const int Julian::RD = julian_epoch ();
+	Julian::Julian()
+	{
+	}
 
-  bool Julian::is_leap_year () const
-  {
-    double year = rep_.d_year ();
-    double d = util::mod (year, 4.0f);
-    if (year > 0)
-      return (d == 0);
-    else
-      return (d == 3);
-  }
+	Julian::Julian(long long const date) : StandardDate(date)
+	{
+	}
 
-  double Julian::to_fixed_date () const
-  {
-    double epoch = rep_.d_epoch ();
-    double year = rep_.d_year ();
-    double month = rep_.d_month ();
-    double day = rep_.d_day ();
-    double y = (year < 0) ? year + 1.0f : year;
-    double p = 0.0f;
-    if (month <= 2)
-      p = 0.0f;
-    else if (is_leap_year ())
-      p = -1.0f;
-    else
-      p = -2.0f;
-    return (epoch - 1 + 365.0f * (y - 1) + floor ((y - 1)/4.0f) 
-            + floor (1.0f/12.0f * (367.0f * month - 362.0f))
-            + p + day);
-  }
+	Julian::Julian(Date const date) : StandardDate(date)
+	{
+	}
 
-  Calendar* Julian::create_from_fixed (double date)
-  {   
-    return update_from_fixed (date, new Julian ());
-  }
+	Julian::Julian(long long const year, int const month, int const day) : StandardDate(year, month, day)
+	{
+	}
 
-  Calendar* Julian::update_from_fixed (double date, Calendar* c)
-  {    
-    double approx = floor (1.0f/1461.0f * (4 * (date - rep_.d_epoch ()) + 1464.0f));
-    double year = (approx <= 0) ? approx - 1 : approx;
-    Julian j1 (year, util::JAN, 1);
-    double prior_days = date - j1.to_fixed_date ();
-    double correction = 0.0f;    
-    Julian j2 (year, util::MAR, 1);
-    if (date < j2.to_fixed_date ())
-      correction = 0.0f;      
-    else if (j2.is_leap_year ())
-      correction = 1.0f;
-    else
-      correction = 2.0f;
-    double month = floor (1.0f/367.0f * (12 * (prior_days + correction) + 373.0f));
-    Julian j3 (year, month, 1);
-    double day = date - j3.to_fixed_date () + 1;
-    Julian* ret = dynamic_cast<Julian*> (c);
-    ret->rep_ = ThreePartRepresentation (rep_.d_epoch (), year, month, day);
-    return c;
-  }
+	long long Julian::toFixed(long long const year, int const month, int const day)
+	{
+		constexpr long long y = (year < 0LL) ? (year + 1LL) : year;
+		return Julian::EPOCH - 1LL + 365LL * (y - 1LL) + ProtoDate::quotient(static_cast<double>(y - 1LL), 4.0) + ProtoDate::quotient(367 * month - 362, 12.0) + ((month <= 2) ? 0 : (isLeapYear(year) ? -1 : -2)) + day;
+	}
 
-  static bool is_julian (Calendar* c)
-  {
-    return (dynamic_cast<Julian*> (c) != 0);
-  }
+	long long Julian::toFixed()
+	{
+		return toFixed(this->year, this->month, this->day);
+	}
 
-  void Julian::destroy (Calendar* c)
-  {   
-    if (is_julian (c)) delete c;
-  }
+	void Julian::fromFixed(long long const date)
+	{
+		constexpr long long approx = ProtoDate::quotient(static_cast<double>(4LL * (date - Julian::EPOCH) + 1464LL), 1461.0);
+		this->year = ((approx <= 0LL) ? (approx - 1LL) : approx);
+		constexpr long long priorDays = date - toFixed(this->year, 1, 1);
+		constexpr int correction = (date < toFixed(this->year, 3, 1)) ? 0 : (isLeapYear(this->year) ? 1 : 2);
+		this->month = static_cast<int>(ProtoDate::quotient(static_cast<double>(12LL * (priorDays + correction) + 373LL), 367.0));
+		this->day = static_cast<int>(date - toFixed(this->year, this->month, 1) + 1LL);
+	}
 
-  bool Julian::operator== (const Calendar& c) const
-  {
-    const Julian& ca = dynamic_cast<const Julian&> (c);
-    return (rep_ == ca.rep_);
-  }
+	long long Julian::BCE(long long const n)
+	{
+		return -n;
+	}
 
-  void Julian::print (std::ostream& out) const
-  {
-    rep_.print (out);
-  }
+	long long Julian::CE(long long const n)
+	{
+		return n;
+	}
 
-  int Julian::ides () const
-  {
-    util::CommonMonth month = static_cast<util::CommonMonth> (rep_.d_month ());
-    if (month == util::MAR || month == util::MAY 
-        || month == util::JUL || month == util::OCT)
-      return 15;
-    else
-      return 13;
-  }
+	bool Julian::isLeapYear(long long const jYear)
+	{
+		return ProtoDate::mod(jYear, 4LL) == ((jYear > 0LL) ? 0 : 3);
+	}
 
-  int Julian::nones () const
-  {
-    return (ides () - 8);
-  }
-  
+	FixedVector *Julian::inGregorian(int const jMonth, int const jDay, long long const gYear)
+	{
+		constexpr long long jan1 = Gregorian::toFixed(gYear, 1, 1);
+		constexpr long long dec31 = Gregorian::toFixed(gYear, 12, 31);
+		Julian tempVar(jan1);
+		constexpr long long y = (&tempVar)->year;
+		constexpr long long yPrime = (y == -1LL) ? 1LL : (y + 1LL);
+		constexpr long long date1 = toFixed(y, jMonth, jDay);
+		constexpr long long date2 = toFixed(yPrime, jMonth, jDay);
+		FixedVector * const result = new FixedVector(1, 1);
+		if (jan1 <= date1 && date1 <= dec31)
+		{
+			result->addFixed(date1);
+		}
+		if (jan1 <= date2 && date2 <= dec31)
+		{
+			result->addFixed(date2);
+		}
+		return result;
+	}
+
+	FixedVector *Julian::easternOrthodoxChristmas(long long const gYear)
+	{
+		return inGregorian(12, 25, gYear);
+	}
+
+	std::wstring Julian::format()
+	{
+		return MessageFormat::format(L"{0} {1} {2,number,#} {3}", std::optional<int>(this->day), ProtoDate::nameFromMonth(this->month, Gregorian::monthNames), std::optional<long long>((this->year < 0LL) ? (-this->year) : this->year), (this->year < 0LL) ? L"B.C.E." : L"C.E.");
+	}
+
+	bool Julian::equals(std::any const obj)
+	{
+		return obj.type() == typeid(Julian) && this->internalEquals(obj);
+	}
 }

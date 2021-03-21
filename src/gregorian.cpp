@@ -9,134 +9,198 @@
 # Redistributions must retain the above copyright notice.
 */
 
-#include <cmath>
-#include "calendar.h"
-#include "gregorian.h"
+#include "Gregorian.h"
+#include "Date.h"
+#include "ProtoDate.h"
 
-using namespace std;
+namespace calendar
+{
 
-namespace calendar {
+	const std::vector<std::wstring> Gregorian::dayOfWeekNames;
+	const std::vector<std::wstring> Gregorian::monthNames;
 
-  const int Gregorian::RD = 1;
+	Gregorian::StaticConstructor::StaticConstructor()
+	{
+		dayOfWeekNames = std::vector<std::wstring> {L"Sunday", L"Monday", L"Tuesday", L"Wednesday", L"Thursday", L"Friday", L"Saturday"};
+		monthNames = std::vector<std::wstring> {L"January", L"February", L"March", L"April", L"May", L"June", L"July", L"August", L"September", L"October", L"November", L"December"};
+	}
 
-  double Gregorian::to_fixed_date () const
-  {
-    double year = rep_.d_year ();
-    double month = rep_.d_month ();
-    double day = rep_.d_day ();
-    double p = 0;
-    if (month <= 2) p = 0;
-    else if (is_leap_year ()) p = -1;
-    else p = -2;
-    return (RD - 1.0f + 365.0f * (year - 1) + floor ((year - 1) / 4.0f)
-            - floor ((year - 1) / 100.0f) + floor ((year - 1) / 400.0f)
-            + floor (1.0f/12.0f * (367.0f * month - 362.0f)) + p + day);
-  }
+	Gregorian::StaticConstructor Gregorian::staticConstructor;
 
-  Calendar* Gregorian::create_from_fixed (double date)
-  {   
-    return update_from_fixed (date, new Gregorian ());
-  }
+	Gregorian::Gregorian()
+	{
+	}
 
-  Calendar* Gregorian::update_from_fixed (double date, Calendar* c)
-  {    
-    double year = year_from_fixed (date);
-    Gregorian g (year, util::MAR, 1);
-    double prior_days = date - g.new_year ();
-    double correction = 0.0f;
-    if (date < g.to_fixed_date ())
-      correction = 0.0f;
-    else if (g.is_leap_year ())
-      correction = 1.0f;
-    else
-      correction = 2.0f;
-    double month = floor (1.0f/367.0f * (12.0f * (prior_days + correction) + 373.0f));
-    Gregorian g2 (year, month, 1);
-    double day = 1 + date - g2.to_fixed_date ();
-    Gregorian* ret = dynamic_cast<Gregorian*> (c);
-    ret->rep_ = ThreePartRepresentation (rep_.d_epoch (), year, month, day);
-    return c;
-  }
+	Gregorian::Gregorian(long long const date) : StandardDate(date)
+	{
+	}
 
-  static bool is_greg (Calendar* c)
-  {
-    return (dynamic_cast<Gregorian*> (c) != 0);
-  }
-  
-  void Gregorian::destroy (Calendar* c)
-  {   
-    if (is_greg (c)) delete c;
-  }
+	Gregorian::Gregorian(Date const date) : StandardDate(date)
+	{
+	}
 
-  bool Gregorian::is_leap_year () const
-  {
-    if (util::mod (rep_.d_year (), 4) == 0)
-      {
-        double r = util::mod (rep_.d_year (), 400);
-        return (r != 100 && r != 200 && r != 300);
-      }
-    return false;
-  }
+	Gregorian::Gregorian(long long const year, int const month, int const day) : StandardDate(year, month, day)
+	{
+	}
 
-  double Gregorian::new_year () const
-  {
-    Gregorian g (rep_.d_year (), util::JAN, 1);
-    return g.to_fixed_date ();
-  }
+	long long Gregorian::toFixed(long long const year, int const month, int const day)
+	{
+		return 0LL + 365LL * (year - 1LL) + ProtoDate::quotient(static_cast<double>(year - 1LL), 4.0) - ProtoDate::quotient(static_cast<double>(year - 1LL), 100.0) + ProtoDate::quotient(static_cast<double>(year - 1LL), 400.0) + ProtoDate::quotient(367 * month - 362, 12.0) + ((month <= 2) ? 0 : (isLeapYear(year) ? -1 : -2)) + day;
+	}
 
-  double Gregorian::year_end () const
-  {
-    Gregorian g (rep_.d_year (), util::DEC, 31);
-    return g.to_fixed_date ();
-  }
+	long long Gregorian::toFixed()
+	{
+		return toFixed(this->year, this->month, this->day);
+	}
 
-  util::DoubleRange Gregorian::year_range () const
-  {
-    return util::DoubleRange (new_year (), year_end ());
-  }
+	void Gregorian::fromFixed(long long const date)
+	{
+		this->year = yearFromFixed(date);
+		constexpr long long priorDays = date - toFixed(this->year, 1, 1);
+		constexpr int correction = (date < toFixed(this->year, 3, 1)) ? 0 : (isLeapYear(this->year) ? 1 : 2);
+		this->month = static_cast<int>(ProtoDate::quotient(static_cast<double>(12LL * (priorDays + correction) + 373LL), 367.0));
+		this->day = static_cast<int>(date - toFixed(this->year, this->month, 1) + 1LL);
+	}
 
-  double Gregorian::year_from_fixed (double date) const
-  {
-    double d0 = date - rep_.d_epoch ();
-    double n400 = std::floor (d0 / 146097.0f);
-    double d1 = util::mod (d0, 146097.0f);
-    double n100 = std::floor (d1 / 36524.0f);
-    double d2 = util::mod (d1, 36524.0f);
-    double n4 = std::floor (d2 / 1461.0f);
-    double d3 = util::mod (d2, 1461.0f);
-    double n1 = std::floor (d3 / 365.0f);
-    double year = 400.0f * n400 + 100.0f * n100 + 4.0f * n4 + n1;
-    if (n100 == 4.0f || n1 == 4.0f)
-      return year;
-    else
-      return (year + 1.0f);
-  }
+	long long Gregorian::altFixedFromGregorian(long long const year, int const month, int const day)
+	{
+		constexpr long long m = ProtoDate::adjustedMod(month - 2, 12);
+		constexpr long long y = year + ProtoDate::quotient(month + 9, 12.0);
+		return -306LL + 365LL * (y - 1LL) + ProtoDate::quotient(static_cast<double>(y - 1LL), 4.0) - ProtoDate::quotient(static_cast<double>(y - 1LL), 100.0) + ProtoDate::quotient(static_cast<double>(y - 1LL), 400.0) + ProtoDate::quotient(static_cast<double>(3LL * m - 1LL), 5.0) + 30LL * (m - 1LL) + day;
+	}
 
-  double Gregorian::difference (const Gregorian& g) const
-  {
-    return (g.to_fixed_date () - to_fixed_date ());
-  }
+	void Gregorian::altGregorianFromFixed(long long const date)
+	{
+		constexpr long long y = yearFromFixed(0LL + date + 306LL);
+		constexpr long long priorDays = date - toFixed(y - 1LL, 3, 1);
+		this->month = static_cast<int>(ProtoDate::adjustedMod(ProtoDate::quotient(static_cast<double>(5LL * priorDays + 155LL), 153.0) + 2LL, 12LL));
+		this->year = y - ProtoDate::quotient(this->month + 9, 12.0);
+		this->day = static_cast<int>(1LL + date - toFixed(this->year, this->month, 1));
+	}
 
-  double Gregorian::nth_kday (double n, double k) const
-  {
-    int i = static_cast<int> (k);
-    if (n > 0)
-      return 7 * n + Calendar::kth_day_before (i, to_fixed_date ());
-    else
-      return 7 * n + Calendar::kth_day_after (i, to_fixed_date ());
-  }
+	bool Gregorian::isLeapYear(long long const gYear)
+	{
+		bool result = false;
+		if (ProtoDate::mod(gYear, 4LL) == 0LL)
+		{
+			constexpr long long n = ProtoDate::mod(gYear, 400LL);
+			if (n != 100LL && n != 200LL && n != 300LL)
+			{
+				result = true;
+			}
+		}
+		return result;
+	}
 
-  double Gregorian::day_light_saving_start () const
-  {
-    Gregorian g (rep_.d_year (), util::MAR, 1);
-    return g.nth_kday (2, util::SUN);
-  }
-  
-  double Gregorian::day_light_saving_end () const
-  {
-    Gregorian g (rep_.d_year (), util::NOV, 1);
-    return g.first_kday (util::SUN);
-  }
+	long long Gregorian::yearFromFixed(long long const date)
+	{
+		constexpr long long l0 = date - 1LL;
+		constexpr long long n400 = ProtoDate::quotient(static_cast<double>(l0), 146097.0);
+		constexpr long long d1 = ProtoDate::mod(l0, 146097LL);
+		constexpr long long n401 = ProtoDate::quotient(static_cast<double>(d1), 36524.0);
+		constexpr long long d2 = ProtoDate::mod(d1, 36524LL);
+		constexpr long long n402 = ProtoDate::quotient(static_cast<double>(d2), 1461.0);
+		constexpr long long d3 = ProtoDate::mod(d2, 1461LL);
+		constexpr long long n403 = ProtoDate::quotient(static_cast<double>(d3), 365.0);
+		constexpr long long year = 400LL * n400 + 100LL * n401 + 4LL * n402 + n403;
+		return (n401 == 4LL || n403 == 4LL) ? year : (year + 1LL);
+	}
 
+	long long Gregorian::altGregorianYearFromFixed(long long const date)
+	{
+		constexpr long long approx = ProtoDate::quotient(static_cast<double>(date - 1LL + 2LL), 365.2425);
+		constexpr long long start = 1LL + 365LL * approx + ProtoDate::quotient(static_cast<double>(approx), 4.0) - ProtoDate::quotient(static_cast<double>(approx), 100.0) + ProtoDate::quotient(static_cast<double>(approx), 400.0);
+		return (date < start) ? approx : (approx + 1LL);
+	}
+
+	int Gregorian::lastDayOfMonth()
+	{
+		switch (this->month)
+		{
+			case 2:
+			{
+				if (isLeapYear(this->year))
+				{
+					return 29;
+				}
+				return 28;
+			}
+			case 4:
+			case 6:
+			case 9:
+			case 11:
+			{
+				return 30;
+			}
+			default:
+			{
+				return 31;
+			}
+		}
+	}
+
+	long long Gregorian::dayNumber()
+	{
+		return ProtoDate::difference(toFixed(this->year - 1LL, 12, 31), this->toFixed());
+	}
+
+	long long Gregorian::daysRemaining()
+	{
+		return ProtoDate::difference(this->toFixed(), toFixed(this->year, 12, 31));
+	}
+
+	long long Gregorian::independenceDay(long long const gYear)
+	{
+		return toFixed(gYear, 7, 4);
+	}
+
+	long long Gregorian::laborDay(long long const gYear)
+	{
+		return ProtoDate::firstKDay(1, toFixed(gYear, 9, 1));
+	}
+
+	long long Gregorian::memorialDay(long long const gYear)
+	{
+		return ProtoDate::lastKDay(1, toFixed(gYear, 5, 31));
+	}
+
+	long long Gregorian::electionDay(long long const gYear)
+	{
+		return ProtoDate::firstKDay(2, toFixed(gYear, 11, 2));
+	}
+
+	long long Gregorian::daylightSavingStart(long long const gYear)
+	{
+		return ProtoDate::firstKDay(0, toFixed(gYear, 4, 1));
+	}
+
+	long long Gregorian::daylightSavingEnd(long long const gYear)
+	{
+		return ProtoDate::lastKDay(0, toFixed(gYear, 10, 31));
+	}
+
+	long long Gregorian::christmas(long long const gYear)
+	{
+		return toFixed(gYear, 12, 25);
+	}
+
+	long long Gregorian::advent(long long const gYear)
+	{
+		return ProtoDate::kDayNearest(toFixed(gYear, 11, 30), 0);
+	}
+
+	long long Gregorian::epiphany(long long const gYear)
+	{
+		return ProtoDate::firstKDay(0, toFixed(gYear, 1, 2));
+	}
+
+	std::wstring Gregorian::format()
+	{
+		return MessageFormat::format(L"{0}, {1} {2} {3,number,#}", ProtoDate::nameFromDayOfWeek(this->toFixed(), Gregorian::dayOfWeekNames), std::optional<int>(this->day), ProtoDate::nameFromMonth(this->month, Gregorian::monthNames), std::optional<long long>(this->year));
+	}
+
+	bool Gregorian::equals(std::any const obj)
+	{
+		return obj.type() == typeid(Gregorian) && this->internalEquals(obj);
+	}
 }
-
