@@ -1,6 +1,4 @@
-Calendrical calculation library
-
-Compiler only Setup
+Calendrical calculation library, Gnu llvm compiler and Windows 10 1903 SDK
 
 ## Requirements
 - Install Clang-gnu 
