@@ -15,7 +15,7 @@
 #include <optional>
 #include <mutex>
 
-namespace calendrica
+namespace calendar
 {
 
 	class FixedVector : public std::vector

@@ -11,7 +11,7 @@
 
 #include "FixedVector.h"
 
-namespace calendrica
+namespace calendar
 {
 
 	FixedVector::FixedVector(int const initialCapacity, int const capacityIncrement) : java::util::Vector(initialCapacity, capacityIncrement)
