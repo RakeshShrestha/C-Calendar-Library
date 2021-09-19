@@ -1,4 +1,4 @@
-Calendrical calculation library, Gnu llvm compiler and Windows 10 1903 SDK
+Calender calculation library Hindu Solar and Lunar and others, Gnu llvm compiler and Windows 10 1903 SDK
 
 ## Requirements
 - Install Clang-gnu 
