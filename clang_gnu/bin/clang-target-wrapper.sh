@@ -45,6 +45,7 @@ fi
 # If changing this wrapper, change clang-target-wrapper.c accordingly.
 CLANG="$DIR/clang"
 FLAGS=""
+FLAGS="$FLAGS --start-no-unused-arguments"
 case $EXE in
 clang++|g++|c++)
     FLAGS="$FLAGS --driver-mode=g++"
@@ -84,8 +85,9 @@ esac
 
 FLAGS="$FLAGS -target $TARGET"
 FLAGS="$FLAGS -rtlib=compiler-rt"
+FLAGS="$FLAGS -unwindlib=libunwind"
 FLAGS="$FLAGS -stdlib=libc++"
 FLAGS="$FLAGS -fuse-ld=lld"
-FLAGS="$FLAGS -Qunused-arguments"
+FLAGS="$FLAGS --end-no-unused-arguments"
 
 $CCACHE "$CLANG" $FLAGS "$@"
